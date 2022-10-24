@@ -45,7 +45,7 @@ class admin
                 }
             }
         }else{
-            return redirect('admin-giris');
+            return redirect()->route('admin.login');
         }
     }
 }

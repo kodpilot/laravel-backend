@@ -36,10 +36,10 @@ class adminLoginController extends Controller
 
         if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
 
-            return route('admin.index');
+            return redirect()->route('admin.index');
         }
         toastr()->warning('Email veya şifre yanlış', 'Başarısız!');
-        return route('admin.login');
+        return redirect()->route('admin.login');
         
     }
 }
