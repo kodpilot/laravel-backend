@@ -18,6 +18,7 @@ class userSeeder extends Seeder
             [
                 'name' => 'Enes',
                 'surname' => 'DOĞRU',
+                'username' => 'enesdogru',
                 'email' => 'info@kodpilot.com',
                 'password' => Hash::make('Ensdo37.'),
                 'file' => 'profile.png',

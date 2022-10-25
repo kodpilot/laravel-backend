@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
         subPanelMenuSeeder::class,
         roleSeeder::class,
         permissionSeeder::class,
+        CvInfosSeeder::class,
     ]);
     }
 }

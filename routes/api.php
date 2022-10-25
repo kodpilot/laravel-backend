@@ -21,3 +21,13 @@ Route::get('/', [mobileAPIController::class, 'index'])->middleware('control:gene
 // authenticating with api key
 Route::post('/register', [mobileAPIController::class, 'register'])->middleware('control:general');
 Route::post('/login', [mobileAPIController::class, 'login'])->middleware('control:general');
+
+
+Route::get('/cv-page', [mobileAPIController::class, 'cvPage'])->middleware('control:key');
+
+
+Route::post('/cv-add', [mobileAPIController::class, 'cvAdd'])->middleware('control:key');
+
+
+
+Route::post('/test-key', [mobileAPIController::class, 'test'])->middleware('control:key');

@@ -49,8 +49,8 @@ class infoSeeder extends Seeder
             'taxAdministration' =>      'Vargi Dairesi',
             'taxNo'             =>      'Vargi Numarası',
     		'status' 			=> 		'1',
-			'mobile_api_private'		=> 		'63354980603d5',
-			'mobile_api_public'			=> 		'$2y$10$yBVjDTGD7KhjkHi7F.wG7uZnwtrTOHF3e1kKoJn2g7zeM0Nq1syZy',
+			'mobile_api_private'		=> 		'6357e3a660160',
+			'mobile_api_public'			=> 		'$2y$10$IZpWbOiWUN.0AsOtVBs6kOSOuLSkD9UOxxdtEgtRhPniHFAaAUNw.',
 
 
     	]);
