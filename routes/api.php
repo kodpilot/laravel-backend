@@ -24,10 +24,14 @@ Route::post('/login', [mobileAPIController::class, 'login'])->middleware('contro
 
 
 Route::get('/cv-page', [mobileAPIController::class, 'cvPage'])->middleware('control:key');
+Route::get('/cv-page/cv-{cv_id?}', [mobileAPIController::class, 'cvDetails'])->middleware('control:key');
 
 
-Route::post('/cv-add', [mobileAPIController::class, 'cvAdd'])->middleware('control:key');
+Route::post('/cv-page/cv-add', [mobileAPIController::class, 'cvAdd'])->middleware('control:key');
+Route::post('/cv-page/cv-{cv_id?}/add-detail', [mobileAPIController::class, 'cvDetailsAdd'])->middleware('control:key');
 
 
 
 Route::post('/test-key', [mobileAPIController::class, 'test'])->middleware('control:key');
+
+

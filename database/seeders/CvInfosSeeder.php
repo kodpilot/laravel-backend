@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use App\Models\cv_infos;
 
 class CvInfosSeeder extends Seeder
 {
@@ -13,7 +14,7 @@ class CvInfosSeeder extends Seeder
      */
     public function run()
     {
-        \DB::table('cv_infos')->insert([
+        $data = [
             [
                 'name' => "Developer",
                 'description' => "code mode",
@@ -26,6 +27,9 @@ class CvInfosSeeder extends Seeder
                 "file" => "example.png",
                 'user_id' => 1,
             ],
-        ]);
+        ];
+        foreach ($data as $key) {
+            cv_infos::create($key);
+        }
     }
 }

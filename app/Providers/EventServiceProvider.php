@@ -8,10 +8,12 @@ use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvi
 use Illuminate\Support\Facades\Event;
 
 
-use App\Observers\ProductObserver;
-use App\Models\products;
-use App\Observers\CategoryObserver;
-use App\Models\categories;
+// use App\Observers\ProductObserver;
+// use App\Models\products;
+// use App\Observers\CategoryObserver;
+// use App\Models\categories;
+use App\Observers\cv_infoObserver;
+use App\Models\cv_infos;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -33,8 +35,9 @@ class EventServiceProvider extends ServiceProvider
     public function boot()
     {
         parent::boot();
-        products::observe(ProductObserver::class);
-        categories::observe(CategoryObserver::class);
+        // products::observe(ProductObserver::class);
+        // categories::observe(CategoryObserver::class);
+        cv_infos::observe(cv_infoObserver::class);
         //  
     }
 }

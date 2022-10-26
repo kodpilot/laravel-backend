@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\cv_infos;
+use App\Models\cv_details;
 use ImageOptimizer;
 
 class mobileAPIController extends Controller
@@ -104,10 +105,27 @@ class mobileAPIController extends Controller
             'cv_infos.name as name',
             'cv_infos.description as description',
             'cv_infos.file as file',
+            'cv_infos.selected as selected',
             'cv_infos.created_at as date',
         )->where('user_id',$user_id)->get();
         
         return response(['status'=>1,'message'=>"cv page","file_path"=>"/assets/cv/",'data'=>$cvs]);
+    }
+
+    // cv details function
+    public function cvDetails(Request $request , $cv_id = null){
+        $user_id = $request->header('user_id');
+        $cv = cv_infos::where('id',$cv_id)->first();
+        if($cv == null){
+            return response(['status'=>0,'message'=>"cv not found"]);
+        }
+        $cv_details = cv_details::select(
+            'cv_details.parameter as parameter',
+            'cv_details.value as value',
+            'cv_details.checked as checked',
+            'cv_details.created_at as date',
+        )->where('cv_id',$cv_id)->get();
+        return response(['status'=>1,'message'=>"cv details","file_path"=>"/assets/cv/cv-".$cv_id."/",'data'=>$cv_details]);
     }
     // cv add function
     public function cvAdd(Request $request){
@@ -148,5 +166,27 @@ class mobileAPIController extends Controller
         $cv->user_id = $user_id;
         $cv->save();
         return response(['status'=>1,'message'=>"cv added"]);
+    }
+
+    // cv details add
+    public function cvDetailsAdd(Request $request,$cv_id=null){
+        $user_id = $request->header('user_id');
+        if($cv_id == null || $cv_id == ""){
+            return response(['status'=>0,'message'=>"cv_id is required"]);
+        }
+        $parameter = $request->parameter;
+        if($parameter == null || $parameter == ""){
+            return response(['status'=>0,'message'=>"parameter is required"]);
+        }
+        $value = $request->value;
+        if($value == null || $value == ""){
+            return response(['status'=>0,'message'=>"value is required"]);
+        }
+        $cv = new cv_details;
+        $cv->parameter = $parameter;
+        $cv->value = $value;
+        $cv->cv_id = $cv_id;
+        $cv->save();
+        return response(['status'=>1,'message'=>"cv details added"]);
     }
 }
