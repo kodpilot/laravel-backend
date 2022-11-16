@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\cv_infos;
 use App\Models\cv_details;
+use App\Models\profile_comments;
+use App\Models\certificates;
 use ImageOptimizer;
 
 class mobileAPIController extends Controller
@@ -17,6 +19,9 @@ class mobileAPIController extends Controller
     }
 
     public function test(Request $request){
+        $detail = cv_details::where('id',1)->first();
+        $detail->verification(['ehe'=>"ehe"]);
+        return response(['status'=>1,'message'=>$detail]);
         return response(['status'=>1,'message'=>"key work properly"]);
     }
 
@@ -102,6 +107,7 @@ class mobileAPIController extends Controller
     public function cvPage(Request $request){
         $user_id = $request->header('user_id');
         $cvs = cv_infos::select(
+            'cv_infos.id as id',
             'cv_infos.name as name',
             'cv_infos.description as description',
             'cv_infos.file as file',
@@ -189,4 +195,133 @@ class mobileAPIController extends Controller
         $cv->save();
         return response(['status'=>1,'message'=>"cv details added"]);
     }
+
+    // profile add comment
+    public function addProfileComment(Request $request , $profile_id = null){
+        $user_id = $request->header('user_id');
+
+        if($profile_id == null || $profile_id == ""){
+            return response(['status'=>0,'message'=>"profile_id is required"]);
+        }
+        $comment_id = $request->comment_id == null ? 0 : $request->comment_id;
+
+        $rate = $request->rate == null ? 0 : $request->rate;
+
+        if($comment_id == 0){
+            if($rate == null || $rate == ""){
+                return response(['status'=>0,'message'=>"rate is required"]);
+            }
+        }
+        else{
+            $rate = 0;
+            $check = profile_comments::where('id',$comment_id)->first();
+            if($check == null ){
+                return response(['status'=>0,'message'=>"comment not found"]);
+            }
+            $control_sub = $check->comment_id != 0;
+            if($control_sub){
+                return response(['status'=>0,'message'=>"this is sub comment"]);
+            }
+        }
+
+        $comment = $request->comment;
+        if($comment == null || $comment == ""){
+            return response(['status'=>0,'message'=>"comment is required"]);
+        }
+
+        $platform = $request->platform;
+        if($platform == null || $platform == ""){
+            return response(['status'=>0,'message'=>"platform is required"]);
+        }
+
+        $profile_comment = new profile_comments;
+        $profile_comment->comment = $comment;
+        $profile_comment->comment_id = $comment_id;
+        $profile_comment->profile_id = $profile_id;
+        $profile_comment->user_id = $user_id;
+        $profile_comment->platform = $platform;
+        $profile_comment->rate = $rate;
+        $profile_comment->save();
+        return response(['status'=>1,'message'=>"comment added"]);
+    }
+
+    // profile comments
+    public function getProfileComments(Request $request ){
+        $user_id = $request->header('user_id');
+        $profile_id = $request->profile_id;
+        if($profile_id == null || $profile_id == ""){
+            return response(['status'=>0,'message'=>"profile_id is required"]);
+        }
+        $comments = profile_comments::select(
+            'profile_comments.id as id',
+            'profile_comments.comment as comment',
+            'profile_comments.comment_id as comment_id',
+            'profile_comments.profile_id as profile_id',
+            'profile_comments.user_id as user_id',
+            'profile_comments.platform as platform',
+            'profile_comments.rate as rate',
+            'profile_comments.created_at as date',
+            'users.name as user_name',
+            'users.file as user_image',
+        )->join('users','users.id','=','profile_comments.user_id')->where('profile_comments.status','1')->where('profile_id',$profile_id)->where('comment_id',0)->orderBy('id','desc')->get();
+        foreach ($comments as $key => $value) {
+            $value->user_image = $value->user_image == null ? "" : "/assets/users/".$value->user_id."/".$value->user_image;
+            $value->sub_comments = profile_comments::select(
+                'profile_comments.id as id',
+                'profile_comments.comment as comment',
+                'profile_comments.comment_id as comment_id',
+                'profile_comments.profile_id as profile_id',
+                'profile_comments.user_id as user_id',
+                'profile_comments.platform as platform',
+                'profile_comments.rate as rate',
+                'profile_comments.created_at as date',
+                'users.name as user_name',
+                'users.file as user_image',
+            )->join('users','users.id','=','profile_comments.user_id')->where('profile_comments.status','1')->where('comment_id',$value->id)->orderBy('id','desc')->get();
+            foreach ($value->sub_comments as $key2 => $value2) {
+                $value2->user_image = $value2->user_image == null ? "" : "/assets/users/".$value2->user_id."/".$value2->user_image;
+            }
+        }
+        return response(['status'=>1,'message'=>"comments","data"=>$comments]);
+    }
+
+    // profile certificates
+    public function certificatesPage(Request $request){
+        $user_id = $request->header('user_id');
+        $certificates = certificates::select(
+            'certificates.id as id',
+            'certificates.name as name',
+            'certificates.description as description',
+            'certificates.start_date as start_date',
+            'certificates.end_date as end_date',
+            'certificates.file as file',
+            'certificates.user_id as user_id',
+            'certificates.created_at as date',
+            'users.name as user_name',
+            'users.file as user_image',
+        )->join('users','users.id','=','certificates.user_id')->where('certificates.status','1')->orderBy('id','desc')->get();
+        return response(['status'=>1,'message'=>"certificates page","data"=>$certificates]);
+    }
+
+    // profile add certificate
+    public function addCertificate(Request $request){
+        $user_id = $request->header('user_id');
+        $request->validate([
+            'name' => 'required',
+            'description' => 'required',
+            'start_date' => 'required',
+            'end_date' => 'required',
+            'file' => 'required',
+        ]);
+        $certificate = new certificates;
+        $certificate->name = $name;
+        $certificate->description = $description;
+        $certificate->start_date = $start_date;
+        $certificate->end_date = $end_date;
+        $certificate->file = $file;
+        $certificate->user_id = $user_id;
+        $certificate->save();
+        return response(['status'=>1,'message'=>"certificate added"]);
+    }
+
 }

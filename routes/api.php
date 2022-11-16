@@ -23,6 +23,10 @@ Route::post('/register', [mobileAPIController::class, 'register'])->middleware('
 Route::post('/login', [mobileAPIController::class, 'login'])->middleware('control:general');
 
 
+Route::get('/certificates-page', [mobileAPIController::class, 'certificatesPage'])->middleware('control:key');
+Route::post('/certificates-page/add-certificate', [mobileAPIController::class, 'addCertificate'])->middleware('control:key');
+
+
 Route::get('/cv-page', [mobileAPIController::class, 'cvPage'])->middleware('control:key');
 Route::get('/cv-page/cv-{cv_id?}', [mobileAPIController::class, 'cvDetails'])->middleware('control:key');
 
@@ -30,6 +34,10 @@ Route::get('/cv-page/cv-{cv_id?}', [mobileAPIController::class, 'cvDetails'])->m
 Route::post('/cv-page/cv-add', [mobileAPIController::class, 'cvAdd'])->middleware('control:key');
 Route::post('/cv-page/cv-{cv_id?}/add-detail', [mobileAPIController::class, 'cvDetailsAdd'])->middleware('control:key');
 
+
+Route::post('/profile-page/profile-{profile_id?}/add-comment', [mobileAPIController::class, 'addProfileComment'])->middleware('control:key');
+
+Route::get('/profile-page/profile-{profile_id?}/comments', [mobileAPIController::class, 'getProfileComments'])->middleware('control:key');
 
 
 Route::post('/test-key', [mobileAPIController::class, 'test'])->middleware('control:key');

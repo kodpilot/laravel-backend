@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\cv_infos;
+use App\Models\verifications;
 
 class cv_infoObserver
 {
@@ -19,6 +20,9 @@ class cv_infoObserver
             $cv_infos->selected = '1';
             $cv_infos->save();
         }
+        verifications::create([
+            'cv_id' => $cv_infos->id,
+        ]);
     }
 
     /**
