@@ -29,6 +29,7 @@ class pageController extends Controller
 
   public function index(Request $request)
   {
+    // sendMessage("ehe","+905466842300");
     return view('themes.' . getInfos()->theme . '.index');
   }
 }

@@ -3,7 +3,10 @@
 namespace App\Observers;
 
 use App\Models\cv_infos;
-use App\Models\verifications;
+use App\Models\personal_informations;
+use App\Models\contact;
+use App\Models\social_media;
+
 
 class cv_infoObserver
 {
@@ -20,9 +23,9 @@ class cv_infoObserver
             $cv_infos->selected = '1';
             $cv_infos->save();
         }
-        verifications::create([
-            'cv_id' => $cv_infos->id,
-        ]);
+        personal_informations::create(['cv_id' => $cv_infos->id]);
+        contact::create(['cv_id' => $cv_infos->id]);
+        social_media::create(['cv_id' => $cv_infos->id]);
     }
 
     /**

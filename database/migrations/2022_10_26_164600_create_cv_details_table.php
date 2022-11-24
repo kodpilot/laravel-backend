@@ -16,8 +16,10 @@ class CreateCvDetailsTable extends Migration
         Schema::create('cv_details', function (Blueprint $table) {
             $table->id();
             $table->integer('cv_id');
-            $table->string('parameter');
-            $table->string('value');
+            $table->string('parent',32);
+            $table->string('icon',16);
+            $table->string('parameter',32);
+            $table->string('value',100);
             $table->enum('checked',[0,1])->default(0);
             $table->timestamp('created_at')->default(DB::raw('CURRENT_TIMESTAMP'));
             $table->timestamp('updated_at')->default(DB::raw('CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP'));

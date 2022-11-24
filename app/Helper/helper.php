@@ -26,10 +26,32 @@ use App\Models\payments;
 use App\Models\currencies;
 use App\Models\popups;
 use App\Models\sub_categories;
+use App\Models\personal_informations;
+use App\Models\contact;
+use App\Models\social_media;
+use App\Models\skills;
+use App\Models\education;
+use App\Models\employment_history;
+use App\Models\training;
+use App\Models\cv_references;
+use App\Models\interests;
+use App\Models\cv_languages;
+use App\Models\cv_infos;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Twilio\Rest\Client;
+
+function sendMessage($message, $recipient)
+{
+    $account_sid = getenv("TWILIO_SID");
+    $auth_token = getenv("TWILIO_AUTH_TOKEN");
+    $twilio_number = getenv("TWILIO_NUMBER");
+    $client = new Client($account_sid, $auth_token);
+    $client->messages->create($recipient, 
+            ['from' => $twilio_number, 'body' => $message] );
+}
 
 function getPopup(){
     $popups = popups::where('status','1')->orderByDesc('id')->get();
@@ -60,6 +82,64 @@ function getRoleAction($menu_id,$status_id){
         return subPanelMenus::where('id',$menu_id)->first();
 
     }
+}
+
+function getCvDetail($user_id = null,$cv_id = null){
+    $cv = cv_infos::where('id',$cv_id)->where('user_id',$user_id)->first();
+        if($cv == null){
+            return [];
+        }
+        $personal_informations =personal_informations::where('cv_id',$cv_id)->first();
+        $contact = contact::where('cv_id',$cv_id)->first();
+        $social_media = social_media::where('cv_id',$cv_id)->first();
+        $skills = skills::where('cv_id',$cv_id)->get();
+        $education = education::where('cv_id',$cv_id)->get();
+        $employment_history = employment_history::where('cv_id',$cv_id)->get();
+        $training = training::where('cv_id',$cv_id)->get();
+        $cv_references = cv_references::where('cv_id',$cv_id)->get();
+        $interests = interests::where('cv_id',$cv_id)->get();
+        $languages = cv_languages::where('cv_id',$cv_id)->get();
+
+
+        $data = [
+            'cv'=>[
+                'file_path'=>"/assets/cv/",
+                "data"=>$cv
+            ],
+            'personal_informations'=>$personal_informations,
+            'contact'=>$contact,
+            'social_media'=>$social_media,
+            'skills'=>[
+                'file_path'=>"/assets/skills/",
+                'data'=>$skills
+            ],
+            'employment_history'=>[
+                'file_path'=>"/assets/employment_history/",
+                'data'=>$employment_history
+            ],
+            'education'=>[
+                'file_path'=>"/assets/education/",
+                'data'=>$education
+            ],
+            'training'=>[
+                'file_path'=>"/assets/training/",
+                'data'=>$training
+            ],
+            'cv_references'=>[
+                'file_path'=>"/assets/cv_references/",
+                'data'=>$cv_references
+            ],
+            'interests'=>[
+                'file_path'=>"/assets/interests/",
+                'data'=>$interests
+            ],
+            'languages'=>[
+                'file_path'=>"/assets/languages/",
+                'data'=>$languages
+            ]
+
+        ];
+        return $data;
 }
 
 function getRoleName($role_id){

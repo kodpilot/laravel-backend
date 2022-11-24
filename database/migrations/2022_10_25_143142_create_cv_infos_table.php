@@ -18,8 +18,10 @@ class CreateCvInfosTable extends Migration
             $table->string('name');
             $table->string('description');
             $table->string('file')->nullable();
+            $table->string('video')->nullable();
             $table->integer('user_id');
             $table->enum('selected',[0,1])->default(0);
+            $table->enum('status',[0,1])->default(1);
             $table->timestamp('created_at')->default(DB::raw('CURRENT_TIMESTAMP'));
             $table->timestamp('updated_at')->default(DB::raw('CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP'));
         });

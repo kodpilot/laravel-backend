@@ -24,8 +24,24 @@ class userSeeder extends Seeder
                 'file' => 'profile.png',
                 'tel' => '05076220384',
                 'status' => '1',
-                'admin' => '1'
+                'admin' => '1',
+                "api_public" => Hash::make('eheheheehehhe'),
+                "api_private"=>"eheheheehehhe"
+            ],
+            [
+                'name' => 'Sefa',
+                'surname' => 'Dedeoğlu',
+                'username' => 'sefadedeoglu',
+                'email' => 'sefa@kodpilot.com',
+                'password' => Hash::make('Sefa16500*'),
+                'file' => 'profile.png',
+                'tel' => '05348568526',
+                'status' => '1',
+                'admin' => '1',
+                "api_public" => Hash::make('eheheheehehhe'),
+                "api_private"=>"eheheheehehhe"
             ],
         ]);
+        
     }
 }

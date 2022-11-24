@@ -10,6 +10,20 @@ use App\Models\cv_infos;
 use App\Models\cv_details;
 use App\Models\profile_comments;
 use App\Models\certificates;
+use App\Models\personal_informations;
+use App\Models\contact;
+use App\Models\social_media;
+use App\Models\skills;
+use App\Models\education;
+use App\Models\employment_history;
+use App\Models\training;
+use App\Models\cv_references;
+use App\Models\interests;
+use App\Models\cv_languages;
+use App\Models\phone_codes;
+
+
+
 use ImageOptimizer;
 
 class mobileAPIController extends Controller
@@ -25,60 +39,54 @@ class mobileAPIController extends Controller
         return response(['status'=>1,'message'=>"key work properly"]);
     }
 
+    public function verifyPhone(Request $request){
+        $request->validate([
+            'tel' => 'required|numeric',
+        ]);
+        $tel = $request->tel;
+        $check = User::where('tel',$tel)->first();
+        if($check){
+            return response(['status'=>0,'message'=>"phone number already exist"]);
+        }
+        $code = random_int(100000, 999999);
+        $code_obj = phone_codes::where('phone',$tel)->firstOrNew();
+        $code_obj->phone = $tel;
+        $code_obj->code = $code;
+        $code_obj->save();
+        sendMessage("Profile Wallet verification code:".$code,"+905348568526");
+        return response(['status'=>1,'message'=>"code sent"]);
+    }
+
     // register function
     public function register(Request $request){
-        $email = $request->email;
-        if($email == null || $email == ""){
-            return response(['status'=>0,'message'=>"Email is required"]);
-        }
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return response(['status'=>0,'message'=>"Email is not valid"]);
-        }
+        $request->validate([
+            'email'=>'required|unique:users|email',
+            'username'=>'required|unique:users',
+            'tel'=>'required|numeric',
+            'code'=>'required|numeric|digits:6',
+            'password'=>'required|min:6|confirmed',
+            'name' => 'required|string|max:255',
+            'surname' => 'required|string|max:255',
+        ]);
+        $request->middle_name == null ? $request->middle_name = "" : null;
 
-        if (User::where('email', $email)->exists()) {
-            return response(['status'=>0,'message'=>"Email is already taken."]);
+        $code = phone_codes::where('phone',$request->tel)->where('code',$request->code)->first();
+        if($code == null){
+            return response(['status'=>0,'message'=>"code is not valid"]);
         }
-        $tel = $request->tel;
-        if ($tel == null || $tel == "") {
-            return response(['status'=>0,'message'=>"tel is required"]);
-        }
-        $username = $request->username;
-        if ($username == null || $username == "") {
-            return response(['status'=>0,'message'=>"username is required"]);
-        }
-        $name = $request->name;
-        if($name == null || $name == ""){
-            return response(['status'=>0,'message'=>"name is required"]);
-        }
-        $middle_name = $request->middle_name;
-
-        $surname = $request->surname;
-        if ($surname == null || $surname == "") {
-            return response(['status'=>0,'message'=>"surname is required"]);
-        }
-        $password = $request->password;
-        if ($password == null || $password == "") {
-            return response(['status'=>0,'message'=>"password is required"]);
-        }
-        $repassword = $request->repassword;
-        if ($repassword == null || $repassword == "") {
-            return response(['status'=>0,'message'=>"repassword is required"]);
-        }
-
-        if ($password != $repassword) {
-            return response(['status'=>0,'message'=>"password and repassword must be same"]);
-        }
-
+        // $code->delete();
         $user = new User;
-        $user->name = $name;
-        $user->middlename = $middle_name;
-        $user->surname = $surname;
-        $user->tel = $tel;
-        $user->username = $username;
-        $user->email = $email;
-        $user->password = ($password);
+        $user->name = $request->name;
+        $user->middlename = $request->middle_name;
+        $user->surname = $request->surname;
+        $user->tel = $request->tel;
+        $user->username = $request->username;
+        $user->email = $request->email;
+        $user->password = Hash::make($request->password);
+        $user->api_private = uniqid();
+        $user->api_public = Hash::make($user->api_private);
         $user->save();
-        return response(['status'=>1,'message'=>"user created"]);
+        return response(['status'=>1,'message'=>"user created",'api_public'=>$user->api_public,'user_id'=>$user->id]);
     }
 
     // login function
@@ -103,6 +111,17 @@ class mobileAPIController extends Controller
         $user->save();
         return response(['status'=>1,'message'=>"user logged in",'api_public'=>$user->api_public,'user_id'=>$user->id]);
     }
+
+    // logout function
+    public function logout(Request $request){
+        $user_id = $request->header('user_id');
+        $user = User::where('id', $user_id)->first();
+        $user->api_private = null;
+        $user->api_public = null;
+        $user->save();
+        return response(['status'=>1,'message'=>"user logged out"]);
+    }
+
     // cv page function
     public function cvPage(Request $request){
         $user_id = $request->header('user_id');
@@ -118,21 +137,12 @@ class mobileAPIController extends Controller
         return response(['status'=>1,'message'=>"cv page","file_path"=>"/assets/cv/",'data'=>$cvs]);
     }
 
-    // cv details function
-    public function cvDetails(Request $request , $cv_id = null){
-        $user_id = $request->header('user_id');
-        $cv = cv_infos::where('id',$cv_id)->first();
-        if($cv == null){
-            return response(['status'=>0,'message'=>"cv not found"]);
-        }
-        $cv_details = cv_details::select(
-            'cv_details.parameter as parameter',
-            'cv_details.value as value',
-            'cv_details.checked as checked',
-            'cv_details.created_at as date',
-        )->where('cv_id',$cv_id)->get();
-        return response(['status'=>1,'message'=>"cv details","file_path"=>"/assets/cv/cv-".$cv_id."/",'data'=>$cv_details]);
+    public function cvDetailPage(Request $request, $cv_id = null){
+        $user_id = $request->header('user_id'); 
+        $data = getCvDetail($user_id,$cv_id);
+        return response(['status'=>1,'message'=>"cv detail page",'data'=>$data]);
     }
+
     // cv add function
     public function cvAdd(Request $request){
         $user_id = $request->header('user_id');
@@ -165,36 +175,673 @@ class mobileAPIController extends Controller
             return response(['status'=>0,'message'=>"file is required"]);
         }
 
+        $video = "";
+        if ($request->hasFile('video')) {
+            try {
+                $video = uniqid().'.'.$request->file('video')->getClientOriginalExtension();
+                $request->file('video')->move(public_path('/assets/cv/') ,$video);
+                $path= public_path('/assets/cv/').$video;
+            } catch (\Throwable $th) {
+                \Log::error($th);
+                return response(['status'=>0,'message'=>"unexcepted error occured when video save"]);
+            }
+        }
+        if($video == ""){
+            return response(['status'=>0,'message'=>"video is required"]);
+        }
+
         $cv = new cv_infos;
         $cv->name = $name;
         $cv->description = $description;
         $cv->file = $file;
+        $cv->video = $video;
         $cv->user_id = $user_id;
         $cv->save();
         return response(['status'=>1,'message'=>"cv added"]);
     }
 
-    // cv details add
-    public function cvDetailsAdd(Request $request,$cv_id=null){
+    // cv edit function
+    public function cvEdit(Request $request , $cv_id = null){
         $user_id = $request->header('user_id');
-        if($cv_id == null || $cv_id == ""){
-            return response(['status'=>0,'message'=>"cv_id is required"]);
+        $name = $request->name;
+        if($name == null || $name == ""){
+            return response(['status'=>0,'message'=>"name is required"]);
         }
-        $parameter = $request->parameter;
-        if($parameter == null || $parameter == ""){
-            return response(['status'=>0,'message'=>"parameter is required"]);
+        $description = $request->description;
+        if($description == null || $description == ""){
+            return response(['status'=>0,'message'=>"description is required"]);
         }
-        $value = $request->value;
-        if($value == null || $value == ""){
-            return response(['status'=>0,'message'=>"value is required"]);
+        $cv = cv_infos::where('id',$cv_id)->first();
+        if($cv == null){
+            return response(['status'=>0,'message'=>"cv not found"]);
         }
-        $cv = new cv_details;
-        $cv->parameter = $parameter;
-        $cv->value = $value;
-        $cv->cv_id = $cv_id;
+        $file = $cv->file;
+        if ($request->hasFile('file')) {
+            try {
+                $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+                $request->file('file')->move(public_path('/assets/cv/') ,$file);
+                $path= public_path('/assets/cv/').$file;
+                ImageOptimizer::optimize($path);
+            } catch (\Throwable $th) {
+                \Log::error($th);
+                return response(['status'=>0,'message'=>"unexcepted error occured when file save"]);
+            }
+        }
+        $video = $cv->video;
+        if ($request->hasFile('video')) {
+            try {
+                $video = uniqid().'.'.$request->file('video')->getClientOriginalExtension();
+                $request->file('video')->move(public_path('/assets/cv/') ,$video);
+                $path= public_path('/assets/cv/').$video;
+            } catch (\Throwable $th) {
+                \Log::error($th);
+                return response(['status'=>0,'message'=>"unexcepted error occured when video save"]);
+            }
+        }
+        $cv->name = $name;
+        $cv->video = $video;
+        $cv->description = $description;
+        $cv->file = $file;
         $cv->save();
-        return response(['status'=>1,'message'=>"cv details added"]);
+        return response(['status'=>1,'message'=>"cv edited"]);
     }
+
+    // cv delete function 
+    public function cvDelete(Request $request , $cv_id = null){
+        $cv = cv_infos::where('id',$cv_id)->first();
+        if($cv == null){
+            return response(['status'=>0,'message'=>"cv not found"]);
+        }
+        if($cv->status=='0'){
+            return response(['status'=>0,'message'=>"cv not found"]);
+        }
+        if($cv->selected == '1'){
+            cv_infos::where('user_id',$cv->user_id)->where('id','!=',$cv->id)->update(['selected'=>'1']);
+        }
+        $cv->status = '0';
+        $cv->save();
+        return response(['status'=>1,'message'=>"cv deleted"]);
+    }
+
+    public function updatePersonalInformation(Request $request){
+        $user_id = $request->header('user_id');
+        $request->validate([
+            "cv_id" => "required",
+            "date_of_birth" => "required",
+            "nl_number" => "required",
+            "city_of_birth" => "required",
+            "driving_licence" => "required",
+        ]);
+        $cv_id = $request->cv_id;
+        $cv = cv_infos::where('id',$cv_id)->first();
+        if($cv == null){
+            return response(['status'=>0,'message'=>"cv not found"]);
+        }
+        $personal_informations = personal_informations::where('cv_id',$cv_id)->firstOrNew();
+        $request->date_of_birth != $personal_informations->date_of_birth ? $personal_informations->date_of_birth_check = '0' : null;
+        $personal_informations->date_of_birth = $request->date_of_birth;
+        $request->nl_number != $personal_informations->nl_number ? $personal_informations->nl_number_check = '0' : null;
+        $personal_informations->nl_number = $request->nl_number;
+        $request->city_of_birth != $personal_informations->city_of_birth ? $personal_informations->city_of_birth_check = '0' : null;
+        $personal_informations->city_of_birth = $request->city_of_birth;
+        $request->driving_licence != $personal_informations->driving_licence ? $personal_informations->driving_licence_check = '0' : null;
+        $personal_informations->driving_licence = $request->driving_licence;
+        $personal_informations->save();
+        return response(['status'=>1,'message'=>"personal informations updated"]);
+    }
+
+    public function updateContactInformation(Request $request){
+        $request->validate([
+            "cv_id" => "required",
+            "email" => "required",
+            "phone" => "required",
+            "address" => "required",
+        ]);
+        $cv_id = $request->cv_id;
+        $cv = cv_infos::where('id',$cv_id)->first();
+        if($cv == null){
+            return response(['status'=>0,'message'=>"cv not found"]);
+        }
+        $contact_informations = contact::where('cv_id',$cv_id)->firstOrNew();  
+        $request->email != $contact_informations->email ? $contact_informations->email_check = '0' : null;
+        $contact_informations->email = $request->email;
+        $request->phone != $contact_informations->phone ? $contact_informations->phone_check = '0' : null;
+        $contact_informations->phone = $request->phone;
+        $request->address != $contact_informations->address ? $contact_informations->address_check = '0' : null;
+        $contact_informations->address = $request->address;
+        $contact_informations->save();
+        return response(['status'=>1,'message'=>"contact informations updated"]);
+    }
+
+    public function updateSocialInformation(Request $request){
+        $request->validate([
+            "cv_id" => "required",
+            "twitter" => "required",
+            "instagram" => "required",
+            "linkedin" => "required",
+            "medium" => "required",
+            "facebook" => "required",
+        ]);
+        $cv_id = $request->cv_id;
+        $cv = cv_infos::where('id',$cv_id)->first();
+        if($cv == null){
+            return response(['status'=>0,'message'=>"cv not found"]);
+        }
+        $social_informations = social_media::where('cv_id',$cv_id)->firstOrNew();
+        $request->twitter != $social_informations->twitter ? $social_informations->twitter_check = '0' : null;
+        $social_informations->twitter = $request->twitter;
+        $request->instagram != $social_informations->instagram ? $social_informations->instagram_check = '0' : null;
+        $social_informations->instagram = $request->instagram;
+        $request->linkedin != $social_informations->linkedin ? $social_informations->linkedin_check = '0' : null;
+        $social_informations->linkedin = $request->linkedin;
+        $request->medium != $social_informations->medium ? $social_informations->medium_check = '0' : null;
+        $social_informations->medium = $request->medium;
+        $request->facebook != $social_informations->facebook ? $social_informations->facebook_check = '0' : null;
+        $social_informations->facebook = $request->facebook;
+        $social_informations->save();
+
+        return response(['status'=>1,'message'=>"social informations updated"]);
+    }
+
+    public function addSkillInformation(Request $request){
+        $request->validate([
+            "cv_id" => "required",
+            "name" => "required",
+            "score" => "required",
+            "description" => "required",
+        ]);
+        $cv_id = $request->cv_id;
+        $cv = cv_infos::where('id',$cv_id)->first();
+        if($cv == null){
+            return response(['status'=>0,'message'=>"cv not found"]);
+        }
+        $file = "";
+        if($request->hasFile('file')){
+            try{
+                $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+                $request->file('file')->move(public_path('/assets/skills/') ,$file);
+                $path= public_path('/assets/skills/').$file;
+                ImageOptimizer::optimize($path);
+            }
+            catch (\Exception $e){
+                return response(['status'=>0,'message'=>"file not uploaded"]);
+            }
+        }
+        $skill_informations = new skills;
+        $skill_informations->name = $request->name;
+        $skill_informations->score = $request->score;
+        $skill_informations->description = $request->description;
+        $skill_informations->cv_id = $cv_id;
+        $skill_informations->file = $file;
+        $skill_informations->save();
+        return response(['status'=>1,'message'=>"skill informations created"]);
+    }
+
+    public function updateSkillInformation(Request $request){
+        $request->validate([
+            "skill_id" => "required",
+            "name" => "required",
+            "score" => "required",
+            "description" => "required",
+        ]);
+        $skill_id = $request->skill_id;
+        $skill_informations = skills::where('id',$skill_id)->first();
+        if($skill_informations == null){
+            return response(['status'=>0,'message'=>"skill not found"]);
+        }
+        $file = $skill_informations->file;
+        if($request->hasFile('file')){
+            try{
+                $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+                $request->file('file')->move(public_path('/assets/skills/') ,$file);
+                $path= public_path('/assets/skills/').$file;
+                ImageOptimizer::optimize($path);
+                $skill_informations->file = $file;
+                $skill_informations->verification = '0';
+            }
+            catch (\Exception $e){
+                return response(['status'=>0,'message'=>"file not uploaded"]);
+            }
+        }
+
+
+        $request->name != $skill_informations->name ? $skill_informations->verification = '0' : null;
+        $skill_informations->name = $request->name;
+        $request->score != $skill_informations->score ? $skill_informations->verification = '0' : null;
+        $skill_informations->score = $request->score;
+        $request->description != $skill_informations->description ? $skill_informations->verification = '0' : null;
+        $skill_informations->description = $request->description;
+        $skill_informations->save();
+        return response(['status'=>1,'message'=>"skill informations updated"]);
+    }
+
+    public function addEmploymentInformation(Request $request){
+        $request->validate([
+            "cv_id" => "required",
+            "company_name" => "required",
+            "position" => "required",
+            "start_date" => "required",
+            "end_date" => "required",
+            "description" => "required",
+        ]);
+        $cv_id = $request->cv_id;
+        $cv = cv_infos::where('id',$cv_id)->first();
+        if($cv == null){
+            return response(['status'=>0,'message'=>"cv not found"]);
+        }
+        $file = "";
+        if($request->hasFile('file')){
+            try{
+                $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+                $request->file('file')->move(public_path('/assets/employment_history/') ,$file);
+                $path= public_path('/assets/employment_history/').$file;
+                ImageOptimizer::optimize($path);
+            }
+            catch (\Exception $e){
+                return response(['status'=>0,'message'=>"file not uploaded"]);
+            }
+        }
+        $employment_informations = new employment_history;
+        $employment_informations->company_name = $request->company_name;
+        $employment_informations->position = $request->position;
+        $employment_informations->start_date = $request->start_date;
+        $employment_informations->end_date = $request->end_date;
+        $employment_informations->description = $request->description;
+        $employment_informations->cv_id = $cv_id;
+        $employment_informations->file = $file;
+        $employment_informations->save();
+        return response(['status'=>1,'message'=>"employment informations created"]);
+    }
+    
+    public function updateEmploymentInformation(Request $request){
+        $request->validate([
+            "employment_id" => "required",
+            "company_name" => "required",
+            "position" => "required",
+            "start_date" => "required",
+            "end_date" => "required",
+            "description" => "required",
+        ]);
+        $employment_id = $request->employment_id;
+        $employment_informations = employment_history::where('id',$employment_id)->first();
+        if($employment_informations == null){
+            return response(['status'=>0,'message'=>"employment not found"]);
+        }
+        $file = $employment_informations->file;
+        if($request->hasFile('file')){
+            try{
+                $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+                $request->file('file')->move(public_path('/assets/employment_history/') ,$file);
+                $path= public_path('/assets/employment_history/').$file;
+                ImageOptimizer::optimize($path);
+                $employment_informations->file = $file;
+                $employment_informations->verification = '0';
+            }
+            catch (\Exception $e){
+                return response(['status'=>0,'message'=>"file not uploaded"]);
+            }
+        }
+        $request->company_name != $employment_informations->company_name ? $employment_informations->verification = '0' : null;
+        $employment_informations->company_name = $request->company_name;
+        $request->position != $employment_informations->position ? $employment_informations->verification = '0' : null;
+        $employment_informations->position = $request->position;
+        $request->start_date != $employment_informations->start_date ? $employment_informations->verification = '0' : null;
+        $employment_informations->start_date = $request->start_date;
+        $request->end_date != $employment_informations->end_date ? $employment_informations->verification = '0' : null;
+        $employment_informations->end_date = $request->end_date;
+        $request->description != $employment_informations->description ? $employment_informations->verification = '0' : null;
+        $employment_informations->description = $request->description;
+        $employment_informations->save();
+        return response(['status'=>1,'message'=>"employment informations updated"]);
+    }
+
+    public function addEducationInformation(Request $request){
+        $request->validate([
+            "cv_id" => "required",
+            "school_name" => "required",
+            "program" => "required",
+            "start_date" => "required",
+            "end_date" => "required",
+            "description" => "required",
+        ]);
+        $cv_id = $request->cv_id;
+        $cv = cv_infos::where('id',$cv_id)->first();
+        if($cv == null){
+            return response(['status'=>0,'message'=>"cv not found"]);
+        }
+        $file = "";
+        if($request->hasFile('file')){
+            try{
+                $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+                $request->file('file')->move(public_path('/assets/education/') ,$file);
+                $path= public_path('/assets/education/').$file;
+                ImageOptimizer::optimize($path);
+            }
+            catch (\Exception $e){
+                return response(['status'=>0,'message'=>"file not uploaded"]);
+            }
+        }
+        $education_informations = new education;
+        $education_informations->school_name = $request->school_name;
+        $education_informations->program = $request->program;
+        $education_informations->start_date = $request->start_date;
+        $education_informations->end_date = $request->end_date;
+        $education_informations->description = $request->description;
+        $education_informations->cv_id = $cv_id;
+        $education_informations->file = $file;
+        $education_informations->save();
+        return response(['status'=>1,'message'=>"education informations created"]);
+    }
+
+    public function updateEducationInformation(Request $request){
+        $request->validate([
+            "education_id" => "required",
+            "school_name" => "required",
+            "program" => "required",
+            "start_date" => "required",
+            "end_date" => "required",
+            "description" => "required",
+        ]);
+        $education_id = $request->education_id;
+        $education_informations = education::where('id',$education_id)->first();
+        if($education_informations == null){
+            return response(['status'=>0,'message'=>"education not found"]);
+        }
+        $file = $education_informations->file;
+        if($request->hasFile('file')){
+            try{
+                $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+                $request->file('file')->move(public_path('/assets/education/') ,$file);
+                $path= public_path('/assets/education/').$file;
+                ImageOptimizer::optimize($path);
+                $education_informations->file = $file;
+                $education_informations->verification = '0';
+            }
+            catch (\Exception $e){
+                return response(['status'=>0,'message'=>"file not uploaded"]);
+            }
+        }
+        $request->school_name != $education_informations->school_name ? $education_informations->verification = '0' : null;
+        $education_informations->school_name = $request->school_name;
+        $request->program != $education_informations->program ? $education_informations->verification = '0' : null;
+        $education_informations->program = $request->program;
+        $request->start_date != $education_informations->start_date ? $education_informations->verification = '0' : null;
+        $education_informations->start_date = $request->start_date;
+        $request->end_date != $education_informations->end_date ? $education_informations->verification = '0' : null;
+        $education_informations->end_date = $request->end_date;
+        $request->description != $education_informations->description ? $education_informations->verification = '0' : null;
+        $education_informations->description = $request->description;
+        $education_informations->save();
+        return response(['status'=>1,'message'=>"education informations updated"]);
+    }
+
+    public function addTrainingInformation(Request $request){
+        $request->validate([
+            "cv_id" => "required",
+            "training_name" => "required",
+            "program" => "required",
+            "start_date" => "required",
+            "end_date" => "required",
+            "description" => "required",
+        ]);
+        $cv_id = $request->cv_id;
+        $cv = cv_infos::where('id',$cv_id)->first();
+        if($cv == null){
+            return response(['status'=>0,'message'=>"cv not found"]);
+        }
+        $file = "";
+        if($request->hasFile('file')){
+            try{
+                $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+                $request->file('file')->move(public_path('/assets/training/') ,$file);
+                $path= public_path('/assets/training/').$file;
+                ImageOptimizer::optimize($path);
+            }
+            catch (\Exception $e){
+                return response(['status'=>0,'message'=>"file not uploaded"]);
+            }
+        }
+        $training_informations = new training;
+        $training_informations->training_name = $request->training_name;
+        $training_informations->program = $request->program;
+        $training_informations->start_date = $request->start_date;
+        $training_informations->end_date = $request->end_date;
+        $training_informations->description = $request->description;
+        $training_informations->cv_id = $cv_id;
+        $training_informations->file = $file;
+        $training_informations->save();
+        return response(['status'=>1,'message'=>"training informations created"]);
+    }
+
+    public function updateTrainingInformation(Request $request){
+        $request->validate([
+            "training_id" => "required",
+            "training_name" => "required",
+            "program" => "required",
+            "start_date" => "required",
+            "end_date" => "required",
+            "description" => "required",
+        ]);
+        $training_id = $request->training_id;
+        $training_informations = training::where('id',$training_id)->first();
+        if($training_informations == null){
+            return response(['status'=>0,'message'=>"training not found"]);
+        }
+        $file = $training_informations->file;
+        if($request->hasFile('file')){
+            try{
+                $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+                $request->file('file')->move(public_path('/assets/training/') ,$file);
+                $path= public_path('/assets/training/').$file;
+                ImageOptimizer::optimize($path);
+                $training_informations->file = $file;
+                $training_informations->verification = '0';
+            }
+            catch (\Exception $e){
+                return response(['status'=>0,'message'=>"file not uploaded"]);
+            }
+        }
+        $request->training_name != $training_informations->training_name ? $training_informations->verification = '0' : null;
+        $training_informations->training_name = $request->training_name;
+        $request->program != $training_informations->program ? $training_informations->verification = '0' : null;
+        $training_informations->program = $request->program;
+        $request->start_date != $training_informations->start_date ? $training_informations->verification = '0' : null;
+        $training_informations->start_date = $request->start_date;
+        $request->end_date != $training_informations->end_date ? $training_informations->verification = '0' : null;
+        $training_informations->end_date = $request->end_date;
+        $request->description != $training_informations->description ? $training_informations->verification = '0' : null;
+        $training_informations->description = $request->description;
+        $training_informations->save();
+        return response(['status'=>1,'message'=>"training informations updated"]);
+    }
+
+    public function addReferenceInformation(Request $request){
+        $request->validate([
+            "cv_id" => "required",
+            "name" => "required",
+            "email" => "required",
+            "phone" => "required",
+            "company" => "required",
+            "position" => "required",
+        ]);
+        $cv_id = $request->cv_id;
+        $cv = cv_infos::where('id',$cv_id)->first();
+        if($cv == null){
+            return response(['status'=>0,'message'=>"cv not found"]);
+        }
+        $reference_informations = new cv_references;
+        $reference_informations->name = $request->name;
+        $reference_informations->email = $request->email;
+        $reference_informations->phone = $request->phone;
+        $reference_informations->company = $request->company;
+        $reference_informations->position = $request->position;
+        $reference_informations->cv_id = $cv_id;
+        $reference_informations->save();
+        return response(['status'=>1,'message'=>"reference informations created"]);
+    }
+
+    public function updateReferenceInformation(Request $request){
+        $request->validate([
+            "reference_id" => "required",
+            "name" => "required",
+            "email" => "required",
+            "phone" => "required",
+            "company" => "required",
+            "position" => "required",
+        ]);
+        $reference_id = $request->reference_id;
+        $reference_informations = cv_references::where('id',$reference_id)->first();
+        if($reference_informations == null){
+            return response(['status'=>0,'message'=>"reference not found"]);
+        }
+        $reference_informations->name = $request->name;
+        $reference_informations->email = $request->email;
+        $reference_informations->phone = $request->phone;
+        $reference_informations->company = $request->company;
+        $reference_informations->position = $request->position;
+        $reference_informations->save();
+        return response(['status'=>1,'message'=>"reference informations updated"]);
+    }
+
+    public function addInterestInformation(Request $request){
+        $request->validate([
+            "cv_id" => "required",
+            "interest" => "required",
+        ]);
+        $cv_id = $request->cv_id;
+        $cv = cv_infos::where('id',$cv_id)->first();
+        if($cv == null){
+            return response(['status'=>0,'message'=>"cv not found"]);
+        }
+        $interest_informations = new interests;
+        $interest_informations->interest = $request->interest;
+        $interest_informations->cv_id = $cv_id;
+        $interest_informations->save();
+        return response(['status'=>1,'message'=>"interest informations created"]);
+    }
+
+    public function updateInterestInformation(Request $request){
+        $request->validate([
+            "interest_id" => "required",
+            "interest" => "required",
+        ]);
+        $interest_id = $request->interest_id;
+        $interest_informations = interests::where('id',$interest_id)->first();
+        if($interest_informations == null){
+            return response(['status'=>0,'message'=>"interest not found"]);
+        }
+        $interest_informations->interest = $request->interest;
+        $interest_informations->save();
+        return response(['status'=>1,'message'=>"interest informations updated"]);
+    }
+
+    public function addLanguageInformation(Request $request){
+        $request->validate([
+            "cv_id" => "required",
+            "language" => "required",
+            "score" => "required",
+        ]);
+        $cv_id = $request->cv_id;
+        $cv = cv_infos::where('id',$cv_id)->first();
+        if($cv == null){
+            return response(['status'=>0,'message'=>"cv not found"]);
+        }
+        $file = "";
+        if($request->hasFile('file')){
+            try{
+                $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+                $request->file('file')->move(public_path('/assets/languages/') ,$file);
+                $path= public_path('/assets/languages/').$file;
+                ImageOptimizer::optimize($path);
+            }
+            catch (\Exception $e){
+                return response(['status'=>0,'message'=>"file not uploaded"]);
+            }
+        }
+        $language_informations = new cv_languages;
+        $language_informations->language = $request->language;
+        $language_informations->score = $request->score;
+        $language_informations->cv_id = $cv_id;
+        $language_informations->file = $file;
+        $language_informations->save();
+        return response(['status'=>1,'message'=>"language informations created"]);
+
+    }
+
+    public function updateLanguageInformation(Request $request){
+        $request->validate([
+            "language_id" => "required",
+            "language" => "required",
+            "score" => "required",
+        ]);
+        $language_id = $request->language_id;
+        $language_informations = cv_languages::where('id',$language_id)->first();
+        if($language_informations == null){
+            return response(['status'=>0,'message'=>"language not found"]);
+        }
+        $file = $language_informations->file;
+        if($request->hasFile('file')){
+            try{
+                $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+                $request->file('file')->move(public_path('/assets/languages/') ,$file);
+                $path= public_path('/assets/languages/').$file;
+                ImageOptimizer::optimize($path);
+                $language_informations->file = $file;
+                $language_informations->verification = '0';
+            }
+            catch (\Exception $e){
+                return response(['status'=>0,'message'=>"file not uploaded"]);
+            }
+        }
+        $request->language != $language_informations->language ? $language_informations->verification = '0' : null;
+        $language_informations->language = $request->language;
+        $request->score != $language_informations->score ? $language_informations->verification = '0' : null;
+        $language_informations->score = $request->score;
+        $language_informations->save();
+        return response(['status'=>1,'message'=>"language informations updated"]);
+    }
+
+    // // cv details function
+    // public function cvDetails(Request $request , $cv_id = null){
+    //     $user_id = $request->header('user_id');
+    //     $cv = cv_infos::where('id',$cv_id)->first();
+    //     if($cv == null){
+    //         return response(['status'=>0,'message'=>"cv not found"]);
+    //     }
+    //     $cv_details = cv_details::select(
+    //         'cv_details.parameter as parameter',
+    //         'cv_details.parent as parent',
+    //         'cv_details.icon as icon',
+    //         'cv_details.value as value',
+    //         'cv_details.checked as checked',
+    //         'cv_details.created_at as date',
+    //     )->where('cv_id',$cv_id)->get();
+    //     return response(['status'=>1,'message'=>"cv details","file_path"=>"/assets/cv/cv-".$cv_id."/",'data'=>$cv_details]);
+    // }
+
+    // // cv details add
+    // public function cvDetailsAdd(Request $request,$cv_id=null){
+    //     $user_id = $request->header('user_id');
+    //     if($cv_id == null || $cv_id == ""){
+    //         return response(['status'=>0,'message'=>"cv_id is required"]);
+    //     }
+    //     $request->validate([
+    //         'parameter' => 'required',
+    //         'value' => 'required',
+    //         'parent' => 'required',
+    //         'icon' => 'required',
+    //     ]);
+    //     $cv = new cv_details;
+    //     $cv->parameter = $request->parameter;
+    //     $cv->value = $request->value;
+    //     $cv->cv_id = $cv_id;
+    //     $cv->parent = $request->parent;
+    //     $cv->icon = $request->icon;
+    //     $cv->save();
+    //     return response(['status'=>1,'message'=>"cv details added"]);
+    // }
+
+
 
     // profile add comment
     public function addProfileComment(Request $request , $profile_id = null){
@@ -285,43 +932,108 @@ class mobileAPIController extends Controller
         return response(['status'=>1,'message'=>"comments","data"=>$comments]);
     }
 
-    // profile certificates
-    public function certificatesPage(Request $request){
-        $user_id = $request->header('user_id');
-        $certificates = certificates::select(
-            'certificates.id as id',
-            'certificates.name as name',
-            'certificates.description as description',
-            'certificates.start_date as start_date',
-            'certificates.end_date as end_date',
-            'certificates.file as file',
-            'certificates.user_id as user_id',
-            'certificates.created_at as date',
-            'users.name as user_name',
-            'users.file as user_image',
-        )->join('users','users.id','=','certificates.user_id')->where('certificates.status','1')->orderBy('id','desc')->get();
-        return response(['status'=>1,'message'=>"certificates page","data"=>$certificates]);
-    }
+    // // profile certificates
+    // public function certificatesPage(Request $request){
+    //     $user_id = $request->header('user_id');
+    //     $certificates = certificates::select(
+    //         'certificates.id as id',
+    //         'certificates.name as name',
+    //         'certificates.description as description',
+    //         'certificates.start_date as start_date',
+    //         'certificates.end_date as end_date',
+    //         'certificates.file as file',
+    //         'certificates.user_id as user_id',
+    //         'certificates.created_at as date',
+    //         'users.name as user_name',
+    //         'users.file as user_image',
+    //     )->join('users','users.id','=','certificates.user_id')->where('certificates.status','1')->orderBy('id','desc')->get();
+    //     return response(['status'=>1,'message'=>"certificates page","file_path"=>"/assets/certificates/","data"=>$certificates]);
+    // }
 
-    // profile add certificate
-    public function addCertificate(Request $request){
-        $user_id = $request->header('user_id');
-        $request->validate([
-            'name' => 'required',
-            'description' => 'required',
-            'start_date' => 'required',
-            'end_date' => 'required',
-            'file' => 'required',
-        ]);
-        $certificate = new certificates;
-        $certificate->name = $name;
-        $certificate->description = $description;
-        $certificate->start_date = $start_date;
-        $certificate->end_date = $end_date;
-        $certificate->file = $file;
-        $certificate->user_id = $user_id;
-        $certificate->save();
-        return response(['status'=>1,'message'=>"certificate added"]);
-    }
+    // // profile add certificate
+    // public function addCertificate(Request $request){
+    //     $user_id = $request->header('user_id');
+    //     $request->validate([
+    //         'name' => 'required',
+    //         'description' => 'required',
+    //         'start_date' => 'required',
+    //         'end_date' => 'required',
+    //     ]);
+
+    //     $file = "";
+
+    //     if ($request->hasFile('file')) {
+    //         try {
+    //             $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+    //             $request->file('file')->move(public_path('/assets/certificates/') ,$file);
+    //             $path= public_path('/assets/certificates/').$file;
+    //             ImageOptimizer::optimize($path);
+    //         } catch (\Throwable $th) {
+    //             \Log::error($th);
+    //             return response(['status'=>0,'message'=>"unexcepted error occured when file save"]);
+    //         }
+    //     }
+    //     if ($file == "") {
+    //         return response(['status'=>0,'message'=>"file is required"]);
+    //     }
+
+    //     $certificate = new certificates;
+    //     $certificate->name = $request->name;
+    //     $certificate->description = $request->description;
+    //     $certificate->start_date = $request->start_date;
+    //     $certificate->end_date = $request->end_date;
+    //     $certificate->file = $file;
+    //     $certificate->user_id = $user_id;
+    //     $certificate->save();
+    //     return response(['status'=>1,'message'=>"certificate added"]);
+    // }
+
+    // // profile edit certificate
+    // public function editCertificate(Request $request , $certificate_id=null){
+    //     $user_id = $request->header('user_id');
+    //     $request->validate([
+    //         'name' => 'required',
+    //         'description' => 'required',
+    //         'start_date' => 'required',
+    //         'end_date' => 'required',
+    //     ]);
+    //     $certificate = certificates::where('id',$certificate_id)->first();
+    //     if($certificate == null){
+    //         return response(['status'=>0,'message'=>"certificate not found"]);
+    //     }
+    //     $file = $certificate->file;
+
+    //     if ($request->hasFile('file')) {
+    //         try {
+    //             $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+    //             $request->file('file')->move(public_path('/assets/certificates/') ,$file);
+    //             $path= public_path('/assets/certificates/').$file;
+    //             ImageOptimizer::optimize($path);
+    //         } catch (\Throwable $th) {
+    //             \Log::error($th);
+    //             return response(['status'=>0,'message'=>"unexcepted error occured when file save"]);
+    //         }
+    //     }
+    //     $certificate->name = $request->name;
+    //     $certificate->description = $request->description;
+    //     $certificate->start_date = $request->start_date;
+    //     $certificate->end_date = $request->end_date;
+    //     $certificate->file = $file;
+    //     $certificate->user_id = $user_id;
+    //     $certificate->save();
+    //     return response(['status'=>1,'message'=>"certificate edited"]);
+    // }
+
+    // // profile delete certificate
+    // public function deleteCertificate(Request $request , $certificate_id=null){
+    //     $user_id = $request->header('user_id');
+    //     $certificate = certificates::where('id',$certificate_id)->first();
+    //     if($certificate == null){
+    //         return response(['status'=>0,'message'=>"certificate not found"]);
+    //     }
+    //     $certificate->status = '0';
+    //     $certificate->save();
+    //     return response(['status'=>1,'message'=>"certificate deleted"]);
+    // }
 
 }

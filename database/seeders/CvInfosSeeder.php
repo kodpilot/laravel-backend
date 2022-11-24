@@ -19,13 +19,15 @@ class CvInfosSeeder extends Seeder
                 'name' => "Developer",
                 'description' => "code mode",
                 "file" => "example.png",
+                "video" => "example.mp4",
                 'user_id' => 1,
             ],
             [
                 'name' => "Designer",
                 "description" => "design mesign",
                 "file" => "example.png",
-                'user_id' => 1,
+                "video" => "example.mp4",
+                'user_id' => 2,
             ],
         ];
         foreach ($data as $key) {
