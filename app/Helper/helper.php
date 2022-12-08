@@ -106,7 +106,10 @@ function getCvDetail($user_id = null,$cv_id = null){
                 'file_path'=>"/assets/cv/",
                 "data"=>$cv
             ],
-            'personal_informations'=>$personal_informations,
+            'personal_informations'=>[
+                'file_path'=>"/assets/personal_informations/",
+                'data'=>$personal_informations
+            ],
             'contact'=>$contact,
             'social_media'=>$social_media,
             'skills'=>[

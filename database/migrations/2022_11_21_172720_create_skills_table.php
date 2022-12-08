@@ -19,6 +19,7 @@ class CreateSkillsTable extends Migration
             $table->string('name',30);
             $table->enum('score',[0,1,2,3,4,5])->default(0);
             $table->enum('verification',[0,1])->default(0);
+            $table->string('experience')->nullable();
             $table->string('description')->nullable();
             $table->string('file',50)->nullable();
             $table->timestamp('created_at')->default(DB::raw('CURRENT_TIMESTAMP'));

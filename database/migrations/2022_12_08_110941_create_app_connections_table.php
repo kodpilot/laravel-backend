@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateCvLanguagesTable extends Migration
+class CreateAppConnectionsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,14 +13,14 @@ class CreateCvLanguagesTable extends Migration
      */
     public function up()
     {
-        Schema::create('cv_languages', function (Blueprint $table) {
+        Schema::create('app_connections', function (Blueprint $table) {
             $table->id();
-            $table->integer('cv_id');
-            $table->string('language',30);
-            $table->enum('score',[0,1,2,3,4,5])->default(0);
-            $table->enum('verification',[0,1])->default(0);
-            $table->string('experience',100)->nullable();
-            $table->string('file',50)->nullable();
+            $table->integer('user_id');
+            $table->string('api_private');
+            $table->string('api_public');
+            $table->string('app_name',100);
+            $table->string('app_url',200);
+            $table->enum('connected',[0,1])->default(0);
             $table->timestamp('created_at')->default(DB::raw('CURRENT_TIMESTAMP'));
             $table->timestamp('updated_at')->default(DB::raw('CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP'));
         });
@@ -33,6 +33,6 @@ class CreateCvLanguagesTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('cv_languages');
+        Schema::dropIfExists('app_connections');
     }
 }

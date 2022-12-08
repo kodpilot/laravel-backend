@@ -5,6 +5,8 @@ namespace App\Http\Controllers\api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\cv_infos;
 use App\Models\cv_details;
@@ -21,7 +23,7 @@ use App\Models\cv_references;
 use App\Models\interests;
 use App\Models\cv_languages;
 use App\Models\phone_codes;
-
+use App\Models\app_connections;
 
 
 use ImageOptimizer;
@@ -29,6 +31,10 @@ use ImageOptimizer;
 class mobileAPIController extends Controller
 {
     public function index(Request $request){
+        return response(['status'=>1,'message'=>"hello world"]);
+    }
+
+    public function appPage(Request $request){
         return response(['status'=>1,'message'=>"hello world"]);
     }
 
@@ -53,8 +59,29 @@ class mobileAPIController extends Controller
         $code_obj->phone = $tel;
         $code_obj->code = $code;
         $code_obj->save();
-        sendMessage("Profile Wallet verification code:".$code,"+905348568526");
+        try {
+            sendMessage("Profile Wallet verification code:".$code,$tel);
+        } catch (\Throwable $th) {
+            return response(['status'=>0,'message'=>"code could not sent"]);
+        }
         return response(['status'=>1,'message'=>"code sent"]);
+    }
+
+    public function verifyCode(Request $request){
+        $request->validate([
+            'tel' => 'required|numeric',
+            'code' => 'required|numeric'
+        ]);
+        $tel = $request->tel;
+        $code = $request->code;
+        $code_control = phone_codes::where('phone',$tel)->where('code',$code)->first();
+        if($code_control == null){
+            return response([
+                'status'=>0,
+                'message'=>'Code could not verified'
+            ]);
+        }
+        return response(['status'=>1,'message'=>"code verified"]);
     }
 
     // register function
@@ -120,6 +147,48 @@ class mobileAPIController extends Controller
         $user->api_public = null;
         $user->save();
         return response(['status'=>1,'message'=>"user logged out"]);
+    }
+
+    //forgot password function
+    public function forgotPassword(Request $request){
+        $request->validate([
+            'email'=>'required|email',
+        ]);
+        $email = $request->email;
+        $user = User::where('email',$email)->first();
+        if($user == null){
+            return response(['status'=>0,'message'=>"user not found"]);
+        }
+        
+        $mailArray = [
+            'mail'		=>$user->email,
+            'token'     =>$user->token
+        ];
+        try {
+            Mail::send('admin.mail.forgotMail', $mailArray, function ($message) use ($user) {
+                $message->from(env('MAIL_FROM_ADDRESS'), config('app.name'));
+                $message->subject("Password Reset");
+                $message->to($user->email, config('app.name'));
+            });
+            return response(['status'=>1,'message'=>"successfully sent"]);
+        } catch (\Throwable $th) {
+            return response(['status'=>0,'message'=>"unexcepted error"]);
+        }
+    }
+
+    // create card
+    public function createNftCard(Request $request){
+        return response(['status'=>1,'message'=>"card created","tx_id"=>"0x123456789"]);
+    }
+
+    // get card info
+    public function getNftCard(Request $request){
+        return response(['status'=>1,'message'=>"card info",'tx_id'=>"0x123456789"]);
+    }
+
+    // update card
+    public function updateNftCard(Request $request){
+        return response(['status'=>1,'message'=>"card created","tx_id"=>"0x123456789"]);
     }
 
     // cv page function
@@ -277,7 +346,42 @@ class mobileAPIController extends Controller
         if($cv == null){
             return response(['status'=>0,'message'=>"cv not found"]);
         }
+
         $personal_informations = personal_informations::where('cv_id',$cv_id)->firstOrNew();
+        
+        $nl_file = $personal_informations->nl_file;
+        if($request->hasFile('nl_file')){
+            try{
+                $nl_file = uniqid().'.'.$request->file('nl_file')->getClientOriginalExtension();
+                $request->file('nl_file')->move(public_path('/assets/personal-informations/') ,$nl_file);
+                $path= public_path('/assets/personal-informations/').$nl_file;
+                ImageOptimizer::optimize($path);
+                $personal_informations->nl_file = $nl_file;
+                $personal_informations->nl_number_check = '0';
+                
+            }
+            catch (\Exception $e){
+                \Log::error($e);
+                return response(['status'=>0,'message'=>"file not uploaded"]);
+            }
+        }
+
+        $driving_licence_file = $personal_informations->driving_licence_file;
+        if($request->hasFile('driving_licence_file')){
+            try{
+                $driving_licence_file = uniqid().'.'.$request->file('driving_licence_file')->getClientOriginalExtension();
+                $request->file('driving_licence_file')->move(public_path('/assets/personal-informations/') ,$driving_licence_file);
+                $path= public_path('/assets/personal-informations/').$driving_licence_file;
+                ImageOptimizer::optimize($path);
+                $personal_informations->driving_licence_file = $driving_licence_file;
+                $personal_informations->driving_licence_check = '0';
+            }
+            catch (\Exception $e){
+                \Log::error($e);
+                return response(['status'=>0,'message'=>"file not uploaded"]);
+            }
+        }
+
         $request->date_of_birth != $personal_informations->date_of_birth ? $personal_informations->date_of_birth_check = '0' : null;
         $personal_informations->date_of_birth = $request->date_of_birth;
         $request->nl_number != $personal_informations->nl_number ? $personal_informations->nl_number_check = '0' : null;
@@ -349,6 +453,7 @@ class mobileAPIController extends Controller
             "name" => "required",
             "score" => "required",
             "description" => "required",
+            "experience" => "required",
         ]);
         $cv_id = $request->cv_id;
         $cv = cv_infos::where('id',$cv_id)->first();
@@ -371,6 +476,7 @@ class mobileAPIController extends Controller
         $skill_informations->name = $request->name;
         $skill_informations->score = $request->score;
         $skill_informations->description = $request->description;
+        $skill_informations->experience = $request->experience;
         $skill_informations->cv_id = $cv_id;
         $skill_informations->file = $file;
         $skill_informations->save();
@@ -383,6 +489,7 @@ class mobileAPIController extends Controller
             "name" => "required",
             "score" => "required",
             "description" => "required",
+            "experience"  => "required",
         ]);
         $skill_id = $request->skill_id;
         $skill_informations = skills::where('id',$skill_id)->first();
@@ -411,6 +518,8 @@ class mobileAPIController extends Controller
         $skill_informations->score = $request->score;
         $request->description != $skill_informations->description ? $skill_informations->verification = '0' : null;
         $skill_informations->description = $request->description;
+        $request->experience != $skill_informations->experience ? $skill_informations->verification = '0' : null;
+        $skill_informations->experience = $request->experience;
         $skill_informations->save();
         return response(['status'=>1,'message'=>"skill informations updated"]);
     }
@@ -669,6 +778,20 @@ class mobileAPIController extends Controller
         if($cv == null){
             return response(['status'=>0,'message'=>"cv not found"]);
         }
+
+        $file = "";
+        if($request->hasFile('file')){
+            try{
+                $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+                $request->file('file')->move(public_path('/assets/cv_references/') ,$file);
+                $path= public_path('/assets/cv_references/').$file;
+                ImageOptimizer::optimize($path);
+            }
+            catch (\Exception $e){
+                return response(['status'=>0,'message'=>"file not uploaded"]);
+            }
+        }
+
         $reference_informations = new cv_references;
         $reference_informations->name = $request->name;
         $reference_informations->email = $request->email;
@@ -676,7 +799,9 @@ class mobileAPIController extends Controller
         $reference_informations->company = $request->company;
         $reference_informations->position = $request->position;
         $reference_informations->cv_id = $cv_id;
+        $reference_informations->file = $file;
         $reference_informations->save();
+        
         return response(['status'=>1,'message'=>"reference informations created"]);
     }
 
@@ -694,11 +819,27 @@ class mobileAPIController extends Controller
         if($reference_informations == null){
             return response(['status'=>0,'message'=>"reference not found"]);
         }
+
+        $file = $reference_informations->file;
+        if($request->hasFile('file')){
+            try{
+                $file = uniqid().'.'.$request->file('file')->getClientOriginalExtension();
+                $request->file('file')->move(public_path('/assets/cv_references/') ,$file);
+                $path= public_path('/assets/cv_references/').$file;
+                ImageOptimizer::optimize($path);
+            }
+            catch (\Exception $e){
+                return response(['status'=>0,'message'=>"file not uploaded"]);
+            }
+        }
+
+
         $reference_informations->name = $request->name;
         $reference_informations->email = $request->email;
         $reference_informations->phone = $request->phone;
         $reference_informations->company = $request->company;
         $reference_informations->position = $request->position;
+        $reference_informations->file = $file;
         $reference_informations->save();
         return response(['status'=>1,'message'=>"reference informations updated"]);
     }
@@ -740,6 +881,7 @@ class mobileAPIController extends Controller
             "cv_id" => "required",
             "language" => "required",
             "score" => "required",
+            "experience" => "required",
         ]);
         $cv_id = $request->cv_id;
         $cv = cv_infos::where('id',$cv_id)->first();
@@ -763,6 +905,7 @@ class mobileAPIController extends Controller
         $language_informations->score = $request->score;
         $language_informations->cv_id = $cv_id;
         $language_informations->file = $file;
+        $language_informations->experience = $request->experience;
         $language_informations->save();
         return response(['status'=>1,'message'=>"language informations created"]);
 
@@ -773,6 +916,7 @@ class mobileAPIController extends Controller
             "language_id" => "required",
             "language" => "required",
             "score" => "required",
+            "experience" => "required",
         ]);
         $language_id = $request->language_id;
         $language_informations = cv_languages::where('id',$language_id)->first();
@@ -797,8 +941,50 @@ class mobileAPIController extends Controller
         $language_informations->language = $request->language;
         $request->score != $language_informations->score ? $language_informations->verification = '0' : null;
         $language_informations->score = $request->score;
+        $request->experience != $language_informations->experience ? $language_informations->verification = '0' : null;
+        $language_informations->experience = $request->experience;
         $language_informations->save();
         return response(['status'=>1,'message'=>"language informations updated"]);
+    }
+
+    public function addAppConnection(Request $request){
+        $user_id = $request->header('user-id');
+        $request->validate([
+            "app_name" => "required",
+            "app_url" => "required",
+        ]);
+        $connection = new app_connections;
+        $connection->app_name = $request->app_name;
+        $connection->user_id = $user_id;
+        $connection->api_private = uniqid();
+        $connection->api_public = Hash::make($connection->api_private);
+        $connection->app_url = $request->app_url;
+        $connection->save();
+        return response(['status'=>1,'message'=>"app connection added"]);
+    }
+    
+    public function Connections(Request $request){
+        $user_id = $request->header('user-id');
+        $connections = app_connections::select([
+            'app_name as name',
+            'connected as connected',
+            'created_at as date',
+            'id as id'
+        ])->where('user_id',$user_id)->get();
+        return response(['status'=>1,'message'=>"app connections",'data'=>$connections]);
+    }
+
+    public function Connect(Request $request){
+        $request->validate([
+            'id'=>'required',
+        ]);
+        $connection = app_connections::where('id',$request->id)->first();
+        if($connection == null){
+            return response(['status'=>0,'message'=>"connection not found"]);
+        }
+        $control = $connection->status != '1';
+        $redirect_url = $connection->app_url.'/profile-wallet-connect/'.'?api_private='.Str::slug($connection->api_private).'&connect='.$control.'&user_id='.$request->header('user-id').'&app_id='.$connection->id;
+        return response(['status'=>1,'message'=>"redirecting",'redirect_url'=>$redirect_url]);
     }
 
     // // cv details function
@@ -840,8 +1026,6 @@ class mobileAPIController extends Controller
     //     $cv->save();
     //     return response(['status'=>1,'message'=>"cv details added"]);
     // }
-
-
 
     // profile add comment
     public function addProfileComment(Request $request , $profile_id = null){

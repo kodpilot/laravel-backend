@@ -17,6 +17,7 @@ class CreateCvReferencesTable extends Migration
             $table->id();
             $table->integer('cv_id');
             $table->string('name',120);
+            $table->string('file',120);
             $table->string('company',120);
             $table->string('position',120);
             $table->string('email',120);

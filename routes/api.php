@@ -15,14 +15,7 @@ use App\Http\Controllers\api\mobileAPIController;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
-// index
-Route::get('/', [mobileAPIController::class, 'index'])->middleware('control:general');
 
-// authenticating with api key
-Route::post('/register', [mobileAPIController::class, 'register'])->middleware('control:general');
-Route::post('/login', [mobileAPIController::class, 'login'])->middleware('control:general');
-Route::post('/send-code', [mobileAPIController::class, 'verifyPhone'])->middleware('control:general');
-Route::post('/logout', [mobileAPIController::class, 'logout'])->middleware('control:key');
 
 
 
@@ -32,32 +25,72 @@ Route::post('/logout', [mobileAPIController::class, 'logout'])->middleware('cont
 // Route::post('/certificates-page/update-certificate-{certificate_id?}', [mobileAPIController::class, 'editCertificate'])->middleware('control:key');
 
 
-Route::get('/cv-page', [mobileAPIController::class, 'cvPage'])->middleware('control:key');
-Route::get('/cv-page/cv-{cv_id?}', [mobileAPIController::class, 'cvDetailPage'])->middleware('control:key');
-Route::post('/cv-page/cv-add', [mobileAPIController::class, 'cvAdd'])->middleware('control:key');
-Route::post('/cv-page/cv-update-{cv_id?}', [mobileAPIController::class, 'cvEdit'])->middleware('control:key');
-Route::post('/cv-page/cv-delete-{cv_id?}', [mobileAPIController::class, 'cvDelete'])->middleware('control:key');
+// Route group for middleware control:general
+Route::group(['middleware' => ['control:general']], function () {
+    // index
+    Route::get('/', [mobileAPIController::class, 'index']);
+    // authenticating with api key
+    Route::post('/register', [mobileAPIController::class, 'register']);
+    Route::post('/login', [mobileAPIController::class, 'login']);
+    Route::post('/send-code', [mobileAPIController::class, 'verifyPhone']);
+    Route::post('/verify-code', [mobileAPIController::class, 'verifyCode']);
+    Route::post('/reset-password', [mobileAPIController::class, 'forgotPassword']);
+});
 
 
-Route::post('update-details/personal-informations', [mobileAPIController::class, 'updatePersonalInformation'])->middleware('control:key');
-Route::post('update-details/contact-informations', [mobileAPIController::class, 'updateContactInformation'])->middleware('control:key');
-Route::post('update-details/social-media-informations', [mobileAPIController::class, 'updateSocialInformation'])->middleware('control:key');
-Route::post('add-details/skills-informations', [mobileAPIController::class, 'addSkillInformation'])->middleware('control:key');
-Route::post('update-details/skills-informations', [mobileAPIController::class, 'updateSkillInformation'])->middleware('control:key');
-Route::post('add-details/employment-history-informations', [mobileAPIController::class, 'addEmploymentInformation'])->middleware('control:key');
-Route::post('update-details/employment-history-informations', [mobileAPIController::class, 'updateEmploymentInformation'])->middleware('control:key');
-Route::post('add-details/education-history-informations', [mobileAPIController::class, 'addEducationInformation'])->middleware('control:key');
-Route::post('update-details/education-history-informations', [mobileAPIController::class, 'updateEducationInformation'])->middleware('control:key');
-Route::post('add-details/training-informations', [mobileAPIController::class, 'addTrainingInformation'])->middleware('control:key');
-Route::post('update-details/training-informations', [mobileAPIController::class, 'updateTrainingInformation'])->middleware('control:key');
-Route::post('add-details/reference-informations', [mobileAPIController::class, 'addReferenceInformation'])->middleware('control:key');
-Route::post('update-details/reference-informations', [mobileAPIController::class, 'updateReferenceInformation'])->middleware('control:key');
-Route::post('add-details/interest-informations', [mobileAPIController::class, 'addInterestInformation'])->middleware('control:key');
-Route::post('update-details/interest-informations', [mobileAPIController::class, 'updateInterestInformation'])->middleware('control:key');
-Route::post('add-details/language-informations', [mobileAPIController::class, 'addLanguageInformation'])->middleware('control:key');
-Route::post('update-details/language-informations', [mobileAPIController::class, 'updateLanguageInformation'])->middleware('control:key');
 
+// Route group for middleware control:key
+Route::group(['middleware' => 'control:key'], function () {
 
+    Route::post('/logout', [mobileAPIController::class, 'logout'])->middleware('control:key');
+    Route::post('/create-nft-card', [mobileAPIController::class, 'createNftCard'])->middleware('control:key');
+    Route::post('/get-nft-card', [mobileAPIController::class, 'getNftCard'])->middleware('control:key');
+    Route::post('/update-nft-card', [mobileAPIController::class, 'updateNftCard'])->middleware('control:key');
+
+    Route::get('/cv-page', [mobileAPIController::class, 'cvPage']);
+    Route::get('/cv-page/cv-{cv_id?}', [mobileAPIController::class, 'cvDetailPage']);
+    Route::post('/cv-page/cv-add', [mobileAPIController::class, 'cvAdd']);
+    Route::post('/cv-page/cv-update-{cv_id?}', [mobileAPIController::class, 'cvEdit']);
+    Route::post('/cv-page/cv-delete-{cv_id?}', [mobileAPIController::class, 'cvDelete']);
+    
+    
+
+    Route::post('update-details/personal-informations', [mobileAPIController::class, 'updatePersonalInformation']);
+
+    Route::post('update-details/contact-informations', [mobileAPIController::class, 'updateContactInformation']);
+
+    Route::post('update-details/social-media-informations', [mobileAPIController::class, 'updateSocialInformation']);
+
+    Route::post('add-details/skills-informations', [mobileAPIController::class, 'addSkillInformation']);
+    Route::post('update-details/skills-informations', [mobileAPIController::class, 'updateSkillInformation']);
+
+    Route::post('add-details/employment-history-informations', [mobileAPIController::class, 'addEmploymentInformation']);
+    Route::post('update-details/employment-history-informations', [mobileAPIController::class, 'updateEmploymentInformation']);
+
+    Route::post('add-details/education-history-informations', [mobileAPIController::class, 'addEducationInformation']);
+    Route::post('update-details/education-history-informations', [mobileAPIController::class, 'updateEducationInformation']);
+
+    Route::post('add-details/training-informations', [mobileAPIController::class, 'addTrainingInformation']);
+    Route::post('update-details/training-informations', [mobileAPIController::class, 'updateTrainingInformation']);
+
+    Route::post('add-details/reference-informations', [mobileAPIController::class, 'addReferenceInformation']);
+    Route::post('update-details/reference-informations', [mobileAPIController::class, 'updateReferenceInformation']);
+
+    Route::post('add-details/interest-informations', [mobileAPIController::class, 'addInterestInformation']);
+    Route::post('update-details/interest-informations', [mobileAPIController::class, 'updateInterestInformation']);
+
+    Route::post('add-details/language-informations', [mobileAPIController::class, 'addLanguageInformation']);
+    Route::post('update-details/language-informations', [mobileAPIController::class, 'updateLanguageInformation']);
+
+    Route::get('connections', [mobileAPIController::class, 'Connections']);
+    Route::post('connect', [mobileAPIController::class, 'Connect']);
+    Route::post('add-app-connection', [mobileAPIController::class, 'addAppConnection']);
+    
+});
+
+Route::group(['middleware' => 'control:app','prefix'=>'app'], function (){
+    Route::get('/', [mobileAPIController::class, 'appPage']);
+});
 
 // Route::get('/cv-page/cv-{cv_id?}', [mobileAPIController::class, 'cvDetails'])->middleware('control:key');
 // Route::post('/cv-page/cv-{cv_id?}/add-detail', [mobileAPIController::class, 'cvDetailsAdd'])->middleware('control:key');
