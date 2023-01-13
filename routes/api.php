@@ -35,6 +35,9 @@ Route::group(['middleware' => ['control:general']], function () {
     Route::post('/send-code', [mobileAPIController::class, 'verifyPhone']);
     Route::post('/verify-code', [mobileAPIController::class, 'verifyCode']);
     Route::post('/reset-password', [mobileAPIController::class, 'forgotPassword']);
+
+
+    Route::post('/contact-us', [mobileAPIController::class, 'ContactUs']);
 });
 
 
@@ -43,6 +46,7 @@ Route::group(['middleware' => ['control:general']], function () {
 Route::group(['middleware' => 'control:key'], function () {
 
     Route::post('/logout', [mobileAPIController::class, 'logout'])->middleware('control:key');
+    Route::post('/update-password', [mobileAPIController::class, 'changePassword'])->middleware('control:key');
     Route::post('/create-nft-card', [mobileAPIController::class, 'createNftCard'])->middleware('control:key');
     Route::post('/get-nft-card', [mobileAPIController::class, 'getNftCard'])->middleware('control:key');
     Route::post('/update-nft-card', [mobileAPIController::class, 'updateNftCard'])->middleware('control:key');
@@ -53,6 +57,7 @@ Route::group(['middleware' => 'control:key'], function () {
     Route::post('/cv-page/cv-update-{cv_id?}', [mobileAPIController::class, 'cvEdit']);
     Route::post('/cv-page/cv-delete-{cv_id?}', [mobileAPIController::class, 'cvDelete']);
     
+    Route::get('/profile/cv-score', [mobileAPIController::class, 'cvScore']);
     
 
     Route::post('update-details/personal-informations', [mobileAPIController::class, 'updatePersonalInformation']);

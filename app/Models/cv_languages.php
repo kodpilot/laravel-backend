@@ -10,8 +10,8 @@ class cv_languages extends Model
     use HasFactory;
     protected $guarded = [];
     protected $casts = [
-        'created_at' => 'datetime:d-m-Y H:i:s',
-        'updated_at' => 'datetime:d-m-Y H:i:s',
-        'date' => 'datetime:d-m-Y H:i:s',
+        'created_at' => 'datetime:d.m.Y H:i:s',
+        'updated_at' => 'datetime:d.m.Y H:i:s',
+        'date' => 'datetime:d.m.Y H:i:s',
     ];
 }

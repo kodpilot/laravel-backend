@@ -28,10 +28,9 @@
 				<td align="left" valign="center">
 					<div style="text-align:left; margin: 0 20px; padding: 40px; background-color:#ffffff; border-radius: 6px">
 						<!--begin:Email content-->
-						<div style="padding-bottom: 30px">İsim:     {{$name}}</div>
+						<div style="padding-bottom: 30px">Name:     {{$name}}</div>
 						<div style="padding-bottom: 30px">Email:    {{$mail}}</div>
-                        <div style="padding-bottom: 30px">Telefon:  {{$tel}}</div>
-                        <div style="padding-bottom: 30px">Mesaj:    {!!$messages!!}</div>
+                        <div style="padding-bottom: 30px">Message:    {!!$messages!!}</div>
 						
 						<!--end:Email content-->
 					</div>

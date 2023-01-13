@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdandelion_pro=self.webpackChunkdandelion_pro||[]).push([[4673],{104673:(a,s,e)=>{e.d(s,{uF:()=>n});e(989526);const n=a=>{200==a.status&&0==a.data.status&&"unauthorized"==a.data.message&&(window.location.href="/login")}}}]);

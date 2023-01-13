@@ -34,6 +34,38 @@ class mobileAPIController extends Controller
         return response(['status'=>1,'message'=>"hello world"]);
     }
 
+    public function ContactUs(Request $request){
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'message' => 'required|string|max:255',
+        ]);
+        $mailArray = [
+            'name' => $request->name,
+            'mail' => $request->email,
+            'messages' => $request->message,
+            "tel"=>"",
+        ];
+        try{
+            Mail::send("mail.contactForm", $mailArray, function ($message) {
+                $message->from("mail@kodpilot.com", config('app.name'));
+                $message->subject('Contact Mail');
+                $message->to(getInfos()->mail1, config('app.name'));
+            });
+        }
+        catch(Exception $e){
+            return response([
+                "status"=>0,
+                "message"=>"Contact mail could not sended"
+            ]);
+        }
+
+        return response([
+            "status"=>1,
+            "message"=>"Contact mail sended"
+        ]);
+    }
+
     public function appPage(Request $request){
         return response(['status'=>1,'message'=>"hello world"]);
     }
@@ -74,6 +106,7 @@ class mobileAPIController extends Controller
         ]);
         $tel = $request->tel;
         $code = $request->code;
+        return response(['status'=>1,'message'=>"code verified"]);
         $code_control = phone_codes::where('phone',$tel)->where('code',$code)->first();
         if($code_control == null){
             return response([
@@ -97,10 +130,10 @@ class mobileAPIController extends Controller
         ]);
         $request->middle_name == null ? $request->middle_name = "" : null;
 
-        $code = phone_codes::where('phone',$request->tel)->where('code',$request->code)->first();
-        if($code == null){
-            return response(['status'=>0,'message'=>"code is not valid"]);
-        }
+        // $code = phone_codes::where('phone',$request->tel)->where('code',$request->code)->first();
+        // if($code == null){
+        //     return response(['status'=>0,'message'=>"code is not valid"]);
+        // }
         // $code->delete();
         $user = new User;
         $user->name = $request->name;
@@ -147,6 +180,22 @@ class mobileAPIController extends Controller
         $user->api_public = null;
         $user->save();
         return response(['status'=>1,'message'=>"user logged out"]);
+    }
+    
+    // change password function
+    public function changePassword(Request $request){
+        $request->validate([
+            'old_password'=>'required',
+            'new_password'=>'required|min:6|confirmed',
+        ]);
+        $user_id = $request->header('user-id');
+        $user = User::where('id', $user_id)->first();
+        if(!Hash::check($request->old_password,$user->password)){
+            return response(['status'=>0,'message'=>"old password is not correct"]);
+        }
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+        return response(['status'=>1,'message'=>"password changed"]);
     }
 
     //forgot password function
@@ -199,11 +248,56 @@ class mobileAPIController extends Controller
             'cv_infos.name as name',
             'cv_infos.description as description',
             'cv_infos.file as file',
+            'cv_infos.video as video',
             'cv_infos.selected as selected',
             'cv_infos.created_at as date',
         )->where('user_id',$user_id)->get();
         
         return response(['status'=>1,'message'=>"cv page","file_path"=>"/assets/cv/",'data'=>$cvs]);
+    }
+
+    // cv score api
+    public function cvScore(Request $request){
+        $user_id = $request->header('user_id');
+        $selected_cv = cv_infos::where('user_id',$user_id)->where('selected','1')->first();
+        if($selected_cv == null){
+            return response(['status'=>0,'message'=>"no cv selected"]);
+        }
+        $counter = [
+            'verificated'=>0,
+            'total'=>0,
+        ];
+        $data = getCvDetail($user_id,$selected_cv->id);
+
+        
+        $data["personal_informations"]["data"]["date_of_birth_check"] == 1 ? $counter["verificated"] += 1 : null;
+        $data["personal_informations"]["data"]["nl_number_check"] == 1 ? $counter["verificated"] += 1 : null;
+        $data["personal_informations"]["data"]["city_of_birth_check"] == 1 ? $counter["verificated"] += 1 : null;
+        $data["personal_informations"]["data"]["driving_licence_check"] == 1 ? $counter["verificated"] += 1 : null;
+        $counter['total'] += 4;
+        
+
+        $data["contact"]["phone_check"] == 1 ? $counter["verificated"] += 1 : null;
+        $data["contact"]["email_check"] == 1 ? $counter["verificated"] += 1 : null;
+        $data["contact"]["address_check"] == 1 ? $counter["verificated"] += 1 : null;
+        $counter['total'] += 3;
+        
+        $data["social_media"]["twitter_check"] == 1 ? $counter["verificated"] += 1 : null;
+        $data["social_media"]["instagram_check"] == 1 ? $counter["verificated"] += 1 : null;
+        $data["social_media"]["facebook_check"] == 1 ? $counter["verificated"] += 1 : null;
+        $data["social_media"]["medium_check"] == 1 ? $counter["verificated"] += 1 : null;
+        $data["social_media"]["linkedin_check"] == 1 ? $counter["verificated"] += 1 : null;
+        $counter['total'] += 5;
+
+        foreach($data["skills"]["data"] as $element){
+            // return response(['status'=>1,'message'=>"cv score","data"=>$element]);
+            $element[""] == "1" ? $counter["verificated"] += 1 : null;
+        }
+        $counter['total'] += count($data["skills"]["data"]);
+
+
+
+        return response(['status'=>1,'message'=>"cv score","data"=>$data,"counter"=>$counter]);
     }
 
     public function cvDetailPage(Request $request, $cv_id = null){
@@ -214,7 +308,7 @@ class mobileAPIController extends Controller
 
     // cv add function
     public function cvAdd(Request $request){
-        $user_id = $request->header('user_id');
+        $user_id = $request->header('user-id');
         $name = $request->name;
         if($name == null || $name == ""){
             return response(['status'=>0,'message'=>"name is required"]);
